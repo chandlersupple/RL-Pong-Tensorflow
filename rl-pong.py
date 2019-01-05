@@ -51,7 +51,7 @@ episodes = 0
 
 while True:
     current = env.reset()
-    previous = np.zeros_like(current)
+    previous = current
     score = 0
     
     observations = []
@@ -77,7 +77,7 @@ while True:
             
             if done: # Resets environment
                 current = env.reset()
-                previous = np.zeros_like(current)
+                previous = current
                 episodes += 1
                 break
             
