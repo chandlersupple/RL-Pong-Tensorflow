@@ -45,6 +45,8 @@ train = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 
 sess.run(tf.global_variables_initializer())
 
+saver = tf.train.Saver()
+
 # Training
 env = gym.make('Pong-v0')
 episodes = 0
@@ -62,7 +64,7 @@ while True:
     
     for episode in range (batch_size):
         while True:
-            #env.render() # Renders environment (optional)
+            env.render() # Renders environment (optional)
             observation = np.reshape(preprocess(current - previous), [80 * 80])
             observations.append(observation)
             previous = current
@@ -78,11 +80,14 @@ while True:
             if done: # Resets environment
                 current = env.reset()
                 previous = current
-                episodes += 1
                 break
             
     # Trains network and provides training information
+    episodes += batch_size
+    
     sess.run(train, feed_dict= {x: observations, action: actions, reward: discount_rewards(rewards, 0.99)})
     print('Episode %s, Completed in %s seconds, Average Score: %s' %(episodes, round(time.time() - time_start, 2), np.round(score / batch_size, 2)))
-
+    
+    if episodes % 500 == 0: saver.save(sess, 'save-dir')
+    
 env.close() # Closes environment when training is terminated
