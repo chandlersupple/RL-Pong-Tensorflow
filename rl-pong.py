@@ -26,7 +26,7 @@ def preprocess(observation):
 init = tf.contrib.layers.xavier_initializer()
 regularizer = tf.contrib.layers.l2_regularizer(scale= 0.1)
 batch_size = 20
-learning_rate = 0.001
+learning_rate = 0.0001
 
 # Placeholders
 x = tf.placeholder(tf.float32, [None, 80 * 80])
@@ -36,12 +36,11 @@ reward = tf.placeholder(tf.float32, [None])
 # Policy Network
 layer_one = tf.layers.dense(x, 256, kernel_initializer= init, kernel_regularizer= regularizer)
 act_one = tf.nn.leaky_relu(layer_one)
-layer_two = tf.layers.dense(act_one, 2, kernel_initializer= init, kernel_regularizer= regularizer)
-
-move = tf.multinomial(layer_two, 1)
+layer_two = tf.layers.dense(act_one, 1, kernel_initializer= init, kernel_regularizer= regularizer)
+act_two = tf.nn.sigmoid(layer_two)
 
 # Optimization
-loss = tf.losses.softmax_cross_entropy(onehot_labels= tf.one_hot(action, 2), logits= layer_two, weights= reward)
+loss = tf.losses.softmax_cross_entropy(onehot_labels= tf.one_hot(action, 1), logits= layer_two, weights= reward)
 train = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 
 sess.run(tf.global_variables_initializer())
@@ -63,14 +62,14 @@ while True:
     
     for episode in range (batch_size):
         while True:
-            env.render() # Renders environment (optional)
+            #env.render() # Renders environment (optional)
             observation = np.reshape(preprocess(current - previous), [80 * 80])
             observations.append(observation)
             previous = current
             
-            direction = sess.run(move, feed_dict= {x: [observation]}) # Action outputted by policy network
-            direction += 2
-            actions.append(direction[0][0])
+            if sess.run(act_two, feed_dict= {x: [observation]}) > np.random.uniform(): direction = 2 # Action outputted by policy network
+            else: direction = 3
+            actions.append(direction)
             
             current, game_reward, done, info = env.step(direction)
             if game_reward > 0: score += 1
@@ -83,7 +82,7 @@ while True:
                 break
             
     # Trains network and provides training information
-    sess.run(train, feed_dict= {x: observations, action: actions, reward: discount_rewards(rewards, 0.95)})
+    sess.run(train, feed_dict= {x: observations, action: actions, reward: discount_rewards(rewards, 0.99)})
     print('Episode %s, Completed in %s seconds, Average Score: %s' %(episodes, round(time.time() - time_start, 2), np.round(score / batch_size, 2)))
 
 env.close() # Closes environment when training is terminated
